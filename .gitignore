@@ -65,3 +65,5 @@
 *.exe
 *.out
 *.app
+
+.bin/*
