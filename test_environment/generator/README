@@ -1,0 +1,11 @@
+usage : ./make_result_file.sh <test case number>
+
+or if you just want to make init-file and workload-file,
+
+   python ./generator.py
+
+is okay.
+
+this script needs networkx module. so your system doesn't have networkx module, please visit
+
+	https://networkx.github.io/	
