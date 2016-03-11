@@ -97,7 +97,6 @@ int main(int argc, char *argv[]){
 		std::string init_file_path = DATA_PATH + "init-file" + std::to_string(i) + ".txt";
 		std::string workload_file_path = DATA_PATH + "workload-file" + std::to_string(i) + ".txt";
 		std::string result_file_path = DATA_PATH + "result-file" + std::to_string(i) + ".txt";
-		std::cout << workload_file_path << std::endl;
 
 		if (run_harness(init_file_path.c_str(), workload_file_path.c_str(), result_file_path.c_str(), EXE_PATH.c_str(), &elapsed_sec, &cnt_failure) == EXIT_FAILURE){
 			std::cerr << "Failed to test" << std::endl;

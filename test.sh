@@ -1,5 +1,6 @@
 #!/bin/bash
 
 cd ./test_environment/
+mkdir bin
 make
-./tester
+./bin/tester
