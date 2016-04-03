@@ -10,6 +10,7 @@ using namespace std;
 typedef unsigned int nid_t;
 typedef unsigned int cid_t;
 typedef unsigned int vid_t;
+typedef unsigned int dist_t;
 
 typedef struct _ValidNode
 {
@@ -19,7 +20,7 @@ typedef struct _ValidNode
 
 typedef struct _LSPNode
 {
-	unsigned int dist;
+	dist_t dist;
 	vid_t ver;
 	_LSPNode* next;
 } LSPNode;

@@ -23,7 +23,7 @@ L - LSP_NEW_PATH value
 #define LSP_IS_NEED_TO_UPDATE(N, L) (GET_LATEST_LSP((N)->second)->dist > (L))
 
 
-bool compareAndUpdateLSP(Node* src, Node* dest, unsigned int dist, vid_t ver){
+bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
     map<Node*, LSPNode*>::iterator lspIt = LSP_FIND(src, dest);
     LSPNode *new_node;
 
