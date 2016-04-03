@@ -1,27 +1,6 @@
 #include "batch_add.h"
+#include "lsp_macro.h"
 #include <queue>
-
-/*
-S - Start Node
-E - End Node
-N - lsp iterator
-PS - Passing Start Node
-PE - Passing End Node
-L - LSP_NEW_PATH value
-*/
-#define LSP_FIND(S, E) ((S)->lsp.find(E))
-#define LSP_IS_EXIST(N, S) ((N) != (S)->lsp.end())
-
-#define GET_LATEST_LSP(H) H
-#define PUSH_LATEST_LSP(H, N) do{ \
-    N->next = H; \
-    H = N; \
-}while(false)
-
-#define LSP_NEW_PATH(S, PS, PE, E) ((S == PS ? 0 : GET_LATEST_LSP((S)->lsp[PS])->dist) + 1 + \
-                                     (PE == E ? 0 : GET_LATEST_LSP((PE)->lsp[E])->dist))
-#define LSP_IS_NEED_TO_UPDATE(N, L) (GET_LATEST_LSP((N)->second)->dist > (L))
-
 
 bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
     map<Node*, LSPNode*>::iterator lspIt = LSP_FIND(src, dest);
