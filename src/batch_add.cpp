@@ -30,6 +30,10 @@ bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
 }
 
 bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
+    if (dest == updatedNode){
+        return false;
+    }
+
     queue<Node*> nodeQueue;
     set<Node*> foundCheck;
     Node* curr_node;
@@ -44,6 +48,8 @@ bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
 
     nodeQueue.push(dest);
     foundCheck.insert(dest);
+    
+    foundCheck.insert(updatedNode);//updatedNode itself don't need to explore => cycle is always not used as shortest
 
     while(!nodeQueue.empty()){
         curr_node = nodeQueue.front();
