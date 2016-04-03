@@ -1,1 +1,0 @@
-# osori_sigmod_2016
