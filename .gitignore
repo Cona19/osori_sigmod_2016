@@ -67,3 +67,6 @@
 *.app
 
 bin
+
+# Ctags
+tags
