@@ -2,7 +2,7 @@ CC = g++
 
 CPPFLAGS = -Wall -O2 -Wunused-result
 
-OBJS = ./src/clustering.o
+OBJS = ./src/main.o ./src/clustering.o
 SRCS = ./src/$(OBJS:.o=.cpp)
 BIN = ./bin/
 INCLUDE = ./src

@@ -1,4 +1,3 @@
-#include "clustering.h"
 #include <sys/time.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -8,15 +7,26 @@
 #include <iostream>
 #include <set>
 #include <map>
+#include <vector>
 #include <algorithm>
 #include <queue>
+#include "common.h"
 
 #define SWAP(a, b) (a ^= b ^= a ^= b)
 
-extern map<nid_t, Node> nodes;
-extern map<cid_t, Cluster> clusters;
-extern vector<Edge> edges;
-extern int numberOfCores;
+typedef struct _Edge					// only for clustering
+{
+	Node*	start;
+	Node*	end;
+	int		score;
+} Edge;
+
+map<nid_t, Node> nodes;
+map<cid_t, Cluster> clusters;
+
+vector< Edge > edges;					// only for clustering
+
+int numberOfCores;
 
 void* calcEdgeScore(void* tid);
 void* calcLSP(void* tid);
@@ -27,8 +37,80 @@ bool compClusterSize(vector<Node*> first, vector<Node*> second);
 
 vector<int> preClustering(int maxClusterSize);
 
-void clustering()
+int main(int argc, char** argv)
 {
+	numberOfCores = sysconf( _SC_NPROCESSORS_ONLN );
+
+	nid_t node1, node2;
+
+	char str[32];
+//	FILE* fp = fopen("init-file.txt", "r");
+//	FILE* fp = fopen("input2.txt", "r");
+	FILE* fp = fopen(argv[1], "r");
+	while( 1 )
+	{
+		fscanf(fp, "%s", str);
+		//scanf("%s", str);
+		if( str[0] == 'S' )
+			break;
+
+		node1 = atoi(str);
+
+		fscanf(fp, "%s", str);
+		//scanf("%s", str);
+		node2 = atoi(str);
+
+		Edge newEdge;
+//		newEdge.start = node1;
+//		newEdge.end = node2;
+		newEdge.score = 0;
+		edges.push_back( newEdge );
+
+		// edge의 시작 노드 찾기
+		map<nid_t, Node>::iterator it = nodes.find( node1 );
+		if( it == nodes.end() )
+		{
+			// 새로운 노드가 추가된 경우
+			Node newNode;
+			newNode.clusterID = -1;
+			newNode.nid = node1;
+			newNode.inOutEdges.insert( node2 );
+			pair< map<nid_t, Node>::iterator, bool > ret =
+			   	nodes.insert( map<nid_t, Node>::
+					value_type( node1, newNode ) );
+			it = ret.first;
+		}
+		else
+		{
+			it->second.inOutEdges.insert( node2 );
+		}
+
+		// edge의 도착 노드 찾기
+		map<nid_t, Node>::iterator it2 = nodes.find( node2 );
+		if( it2 == nodes.end() )
+		{
+			// 새로운 노드가 추가된 경우
+			Node newNode;
+			newNode.clusterID = -1;
+			newNode.nid = node2;
+			newNode.inOutEdges.insert( node1 );
+			pair< map<nid_t, Node>::iterator, bool > ret =
+				nodes.insert( map<nid_t, Node>::
+					value_type( node2, newNode ) );
+			it2 = ret.first;
+		}
+		else
+		{
+			it2->second.inOutEdges.insert( node1 );
+		}
+
+		it->second.outEdges.insert( &(it2->second) );
+		it2->second.inEdges.insert( &(it->second) );
+
+		edges[edges.size()-1].start = &(it->second);
+		edges[edges.size()-1].end = &(it2->second);
+	}
+
 	timeval startTime, endTime; 
 	gettimeofday( &startTime, NULL );
 
@@ -52,7 +134,7 @@ void clustering()
 		if( pthread_create( &pthread[i], NULL, calcEdgeScore, (void*)i )
 			   	< 0 )
 		{
-			return;
+			return 0;
 		}
 	}
 	for( int i = 0; i < numberOfCores; i++ )
@@ -312,17 +394,20 @@ void clustering()
 
 		it->second.inOutEdges.clear();
 	}
-
+//	printf("<<inBridge : %d, outBridge : %d>>\n", cntInBridge, cntOutBridge);	
 	gettimeofday( &endTime, NULL );
 	printf("<clustering time : %d>\n", endTime.tv_sec - startTime.tv_sec);
 
+	gettimeofday( &startTime, NULL );
+
 	// 리소스 정리
+	printf("-----------before erase ------------\n");
+	edges.clear();
 	clusterNumMap.clear();
 	sortedCluster.clear();
 	clusterList.clear();
 	preCluster.clear();
-
-	gettimeofday( &startTime, NULL );
+	printf("----------- after erase ------------\n");
 
 	// multi thread로 각 edge의 score 매기기 
 /*	pthread = new pthread_t[numberOfCores];
@@ -342,10 +427,232 @@ void clustering()
 	delete pthread;
 */
 	calcLSP(0);
-
 	gettimeofday( &endTime, NULL );
 	printf("<preprocess time : %d>\n", endTime.tv_sec - startTime.tv_sec);
 
+/*	for( map<nid_t, Node>::iterator it = nodes.begin();
+									it != nodes.end(); it++)
+	{
+		printf("<node %d, cluster %d>\n", it->first, it->second.clusterID);
+		for( map<Node*, LSPList>::iterator it2 = it->second.lsp.begin();
+										   it2 != it->second.lsp.end(); it2++ )
+		{
+			printf("%d: ", it2->first->nid);
+			for( list<LSPNode>::iterator it3 = it2->second.begin();
+										 it3 != it2->second.end(); it3++ )
+			{
+				printf("[%d] ", it3->dist);
+			}
+			printf("\n");
+		}
+		printf("-----------------\n");
+	}
+*/
+	/*
+	cout << "R" << std::endl;
+	char queryType;
+	int testcnt = 0;
+	int t1, t2;
+	while( 1 )
+	{
+		scanf("%c", &queryType);
+
+		if( queryType == 'Q' )
+		{
+			scanf("%d %d", &t1, &t2);
+			testcnt++;
+			if( testcnt >= 90 && testcnt <= 92 )
+			{
+				continue;
+			}
+			else if( testcnt == 93 )
+			{
+				cout << nodes.size() << endl;
+				cout << edges.size() << endl;
+				cout << clusters.size() << endl;
+				cout << cntInBridge << endl;
+			}
+			else
+			{
+				cout << "1" << endl;
+			}
+		}
+		else if( queryType == 'F' )
+		{
+		}
+		else if( queryType == 'A' || queryType == 'D' )
+		{
+			scanf("%d %d", &t1, &t2);
+		}
+	}
+	*/
+
+	/*
+	FILE* fpout = fopen("output.txt", "w");
+
+	for( map<cid_t, Cluster>::iterator it = clusters.begin();
+									   it != clusters.end(); it++ )
+	{
+		fprintf(fpout,"%d : %d, %d/%d\n", it->first, it->second.size, it->second.inBridges.size(), it->second.outBridges.size() );
+	}
+
+	for( map<nid_t, Node>::iterator it = nodes.begin();
+									it != nodes.end(); it++ )
+	{
+		fprintf(fpout,"%d : %d\n", it->first, it->second.clusterID );
+	}
+
+	fclose(fpout);
+*/
+/*
+	// cluster 합칠 때 사용될 array
+	int* parentCluster = new int[nodes.size()];
+	int* clusterSize = new int[nodes.size()];
+
+	parentCluster[0] = 0;
+	for( int i = 1; i <= cntPreCluster; i++ )
+	{
+		parentCluster[i] = i;
+		clusterSize[i] = preCluster[i];
+	}
+	for( int i = cntPreCluster+1; i < nodes.size(); i++ )
+	{
+		parentCluster[i] = i;
+		clusterSize[i] = 0;
+	}
+
+	int cntCluster = nodes.size() - cntPreClusteredNode;
+
+	// 0은 아직 clustering되지 않은 노드, cntPreCluster까지는 이미 구성됨
+	int newClusterID = cntPreCluster + 1;
+	for( int i = 0; i < edges.size(); i++ )
+	{
+		int startNodeCID = nodes[edges[i].start].clusterID;
+		int endNodeCID = nodes[edges[i].end].clusterID;
+
+		// pre clustering된 edge는 건너뜀
+		if( startNodeCID > 0 && startNodeCID <= cntPreCluster )
+			continue;
+
+		if( startNodeCID == 0 )
+		{
+			if( endNodeCID == 0 )
+			{
+				// 두 노드 다 아직 소속이 없는 경우, 새로운 클러스터 생성
+				nodes[edges[i].start].clusterID = newClusterID;
+				nodes[edges[i].end].clusterID = newClusterID;
+				parentCluster[newClusterID] = newClusterID;
+				clusterSize[newClusterID] = 2;
+				newClusterID++;
+				cntCluster--;
+			}
+			else
+			{
+				// 시작 노드가 도착 노드의 cluster에 포함되어야 함
+				int realEndNodeCID = endNodeCID;
+				while( realEndNodeCID != parentCluster[realEndNodeCID] )
+					realEndNodeCID = parentCluster[realEndNodeCID];
+
+				if( clusterSize[realEndNodeCID] + 1 > rootN*2 )
+					continue;
+
+				nodes[edges[i].start].clusterID = endNodeCID;
+				clusterSize[realEndNodeCID] += 1;
+				cntCluster--;
+			}
+		}
+		else if( endNodeCID == 0 )
+		{
+			// 도착 노드가 시작 노드의 cluster에 포함되어야 함
+			int realStartNodeCID = startNodeCID;
+			while( realStartNodeCID != parentCluster[realStartNodeCID] )
+				realStartNodeCID = parentCluster[realStartNodeCID];
+
+			if( clusterSize[realStartNodeCID] + 1 > rootN*2 )
+				continue;
+
+			nodes[edges[i].end].clusterID = startNodeCID;
+			clusterSize[realStartNodeCID] += 1;
+			cntCluster--;
+		}
+		else
+		{
+			// 두 노드 다 cluster에 소속되어 있는 경우
+			// 두 노드의 실제 cluster 얻기
+			int realStartNodeCID = startNodeCID;
+			int realEndNodeCID = endNodeCID;
+			while( realStartNodeCID != parentCluster[realStartNodeCID] )
+				realStartNodeCID = parentCluster[realStartNodeCID];
+			while( realEndNodeCID != parentCluster[realEndNodeCID] )
+				realEndNodeCID = parentCluster[realEndNodeCID];
+
+			if( clusterSize[realEndNodeCID] + clusterSize[realStartNodeCID]
+				   	> rootN*2 )
+				continue;
+
+			parentCluster[startNodeCID] = realStartNodeCID;
+			parentCluster[endNodeCID] = realEndNodeCID;
+
+			if( realStartNodeCID == realEndNodeCID )
+			{
+				// 두 노드가 이미 동일한 cluster에 소속되어 있음
+			}
+			else if( realStartNodeCID > realEndNodeCID )
+			{
+				// 두 노드가 다른 cluster에 소속되어있음. cluster 병합
+				parentCluster[realStartNodeCID] = realEndNodeCID;
+				clusterSize[realEndNodeCID] += clusterSize[realStartNodeCID];
+				clusterSize[realStartNodeCID] = 0;
+				cntCluster--;
+			}
+			else
+			{
+				// 두 노드가 다른 cluster에 소속되어있음. cluster 병합
+				parentCluster[realEndNodeCID] = realStartNodeCID;
+				clusterSize[realStartNodeCID] += parentCluster[realEndNodeCID];
+				clusterSize[realEndNodeCID] = 0;
+				cntCluster--;
+			}
+		}
+
+		if( cntCluster == rootN )
+			break;
+	}
+	set<unsigned int> clusterSet;
+	int testCnt = 0;
+	FILE* fpOut = fopen("output.txt", "w");
+	for( int i = 1; i < newClusterID; i++ )
+	{
+		if( parentCluster[i] == i )
+		{
+			clusterSet.insert( i );
+			testCnt++;
+			fprintf(fpOut,"%d : %d\n", i, clusterSize[i] );
+		}
+		else
+		{
+			while( parentCluster[ parentCluster[i] ] != parentCluster[i] )
+			{
+//				printf("%d ", parentCluster[i]);
+//				printf("%d\n", parentCluster[parentCluster[i]]);
+				parentCluster[i] = parentCluster[ parentCluster[i] ];
+			}
+		}
+	}
+	cout << "<" << testCnt << ">" << endl;
+
+	for( map<nid_t, Node>::iterator it = nodes.begin();
+									it != nodes.end(); it++ )
+	{
+		it->second.clusterID = parentCluster[it->second.clusterID];
+		fprintf(fpOut,"%d : %d\n", it->first, it->second.clusterID );
+	}
+	fclose(fpOut);
+
+	delete parentCluster;
+	delete clusterSize;
+*/
+	return 0;
 }
 
 bool compClusterSize(vector<Node*> first, vector<Node*> second)
@@ -538,19 +845,19 @@ void* calcLSP(void* tid)
 	for( map<nid_t, Node>::iterator it = nodes.begin();
 									it != nodes.end(); it++ )
 	{
-//		if( ( i + numberOfCores - threadID ) % numberOfCores != 0 )
-//		{
-//			i++;
-//			continue;
-//		}
-
-//		if( threadID == 0 )
-//		{
-//			if( i % 8000 == 0 )
-//			{
-//				printf("%d, %d\n", i, cntLSPNode);
-//			}
-//		}
+/*		if( ( i + numberOfCores - threadID ) % numberOfCores != 0 )
+		{
+			i++;
+			continue;
+		}
+*/
+		if( threadID == 0 )
+		{
+			if( i % 8000 == 0 )
+			{
+				printf("%d, %d\n", i, cntLSPNode);
+			}
+		}
 
 		node = &(it->second);
 
@@ -578,6 +885,15 @@ void* calcLSP(void* tid)
 				newLSPNode->dist = currentNode.second + 1;
 				newLSPNode->ver = 1;
 				newLSPNode->next = NULL;
+				/*
+				LSPList newLSPList;
+				LSPNode newLSPNode;
+				newLSPNode.dist = currentNode.second + 1;
+				newLSPNode.ver = 1;
+				newLSPList.push_back( newLSPNode );
+				node->lsp.insert( pair<Node*, LSPList>(
+						   	*it2, newLSPList ) );
+				*/
 				cntLSPNode++;
 
 				// 이웃을 Queue에 추가

@@ -70,3 +70,7 @@ bin
 
 # Ctags
 tags
+
+# vi
+*.swp
+
