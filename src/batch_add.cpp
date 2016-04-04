@@ -2,12 +2,12 @@
 #include "lsp_macro.h"
 #include <queue>
 
-bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
+static bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
     map<Node*, LSPNode*>::iterator lspIt = LSP_FIND(src, dest);
     LSPNode *new_node;
 
     if (LSP_IS_EXIST(lspIt, src)){
-        if (!LSP_IS_NEED_TO_UPDATE(lspIt, dist)){
+        if (!IS_NEED_TO_UPDATE_LSP(lspIt, dist)){
             //branch
             return false;
         }
@@ -29,7 +29,7 @@ bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
     return true;
 }
 
-bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
+static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
     if (dest == updatedNode){
         return false;
     }
@@ -37,11 +37,12 @@ bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
     queue<Node*> nodeQueue;
     set<Node*> foundCheck;
     Node* curr_node;
+    dist_t distAPart = (src == updatedNode ? 0 : GET_LSP_DIST(updatedNode, src));
 
     {
         map<Node* , LSPNode*>::iterator lspIt = LSP_FIND(updatedNode, dest);
         //if this node don't have to use this new edge, return false;
-        if (LSP_IS_EXIST(lspIt, updatedNode) && !LSP_IS_NEED_TO_UPDATE(lspIt, LSP_NEW_PATH(updatedNode, src, dest, dest))){
+        if (LSP_IS_EXIST(lspIt, updatedNode) && !IS_NEED_TO_UPDATE_LSP(lspIt, distAPart + 1)){
             return false;//update is not used
         }
     }
@@ -56,7 +57,7 @@ bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
         nodeQueue.pop();
 
         //if this node don't have to use this new edge, branch it;
-        if (compareAndUpdateLSP(updatedNode, curr_node, LSP_NEW_PATH(updatedNode, src, dest, curr_node), curr_ver)){
+        if (compareAndUpdateLSP(updatedNode, curr_node, distAPart + 1 + (dest == curr_node ? 0 : GET_LSP_DIST(dest, curr_node)), curr_ver)){
             for (set<Node*>::iterator it = curr_node->outEdges.begin(); it != curr_node->outEdges.end(); it++){
                 if (foundCheck.find(*it) == foundCheck.end()){
                     nodeQueue.push(*it);
