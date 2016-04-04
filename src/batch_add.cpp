@@ -83,6 +83,12 @@ void addEdge(Node* src, Node* dest, vid_t curr_ver){
     set<Node*> foundCheck;
     Node* curr_node;
 
+    if (IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
+        return;
+    }
+    src->outEdges.insert(dest);
+    dest->inEdges.insert(src);
+
     nodeQueue.push(src);
     foundCheck.insert(src);
 

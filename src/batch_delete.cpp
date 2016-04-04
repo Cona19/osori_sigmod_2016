@@ -181,6 +181,13 @@ void deleteEdge(Node* src, Node* dest, vid_t currVer){
     set<Node*> aGroup = getAGroupSet(src);
     map<Node*, dist_t> bGroup;
     set<Node*>::iterator tmp;
+
+    if (!IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
+        return;
+    }
+    src->outEdges.erase(dest);
+    dest->inEdges.erase(src);
+
 /*
 A그룹이면 탐색
 아니면 값 이용하고 탐색x
