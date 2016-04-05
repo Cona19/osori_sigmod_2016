@@ -1,6 +1,7 @@
 #include "batch_add.h"
 #include "lsp_macro.h"
 #include <queue>
+#include <stdio.h>
 
 static bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
     map<Node*, LSPNode*>::iterator lspIt = LSP_FIND(src, dest);
@@ -33,7 +34,6 @@ static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
     if (dest == updatedNode){
         return false;
     }
-
     queue<Node*> nodeQueue;
     set<Node*> foundCheck;
     Node* curr_node;
@@ -83,7 +83,7 @@ void addEdge(Node* src, Node* dest, vid_t curr_ver){
     set<Node*> foundCheck;
     Node* curr_node;
 
-    if (IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
+	if (IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
         return;
     }
     src->outEdges.insert(dest);
