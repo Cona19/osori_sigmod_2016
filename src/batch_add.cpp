@@ -1,5 +1,6 @@
 #include "batch_add.h"
 #include "lsp_macro.h"
+#include "assert.h"
 #include <queue>
 #include <stdio.h>
 
@@ -31,13 +32,17 @@ static bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
 }
 
 static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
+    //In this case, there is no update because it always makes cycle.
     if (dest == updatedNode){
         return false;
     }
     queue<Node*> nodeQueue;
     set<Node*> foundCheck;
-    Node* curr_node;
+    Node* currNode;
     dist_t distAPart = (src == updatedNode ? 0 : GET_LSP_DIST(updatedNode, src));
+#ifdef ASSERT_MODE
+    ASSERT(src == updatedNode || LSP_IS_EXIST(LSP_FIND(updatedNode, src), updatedNode));
+#endif
 
     {
         map<Node* , LSPNode*>::iterator lspIt = LSP_FIND(updatedNode, dest);
@@ -53,12 +58,15 @@ static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
     foundCheck.insert(updatedNode);//updatedNode itself don't need to explore => cycle is always not used as shortest
 
     while(!nodeQueue.empty()){
-        curr_node = nodeQueue.front();
+        currNode = nodeQueue.front();
         nodeQueue.pop();
 
+#ifdef ASSERT_MODE
+        ASSERT(dest == currNode || LSP_IS_EXIST(LSP_FIND(dest, currNode), dest));
+#endif
         //if this node don't have to use this new edge, branch it;
-        if (compareAndUpdateLSP(updatedNode, curr_node, distAPart + 1 + (dest == curr_node ? 0 : GET_LSP_DIST(dest, curr_node)), curr_ver)){
-            for (set<Node*>::iterator it = curr_node->outEdges.begin(); it != curr_node->outEdges.end(); it++){
+        if (compareAndUpdateLSP(updatedNode, currNode, distAPart + 1 + (dest == currNode ? 0 : GET_LSP_DIST(dest, currNode)), curr_ver)){
+            for (set<Node*>::iterator it = currNode->outEdges.begin(); it != currNode->outEdges.end(); it++){
                 if (foundCheck.find(*it) == foundCheck.end()){
                     nodeQueue.push(*it);
                     foundCheck.insert(*it);
@@ -81,25 +89,31 @@ static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
 void addEdge(Node* src, Node* dest, vid_t curr_ver){
     queue<Node*> nodeQueue;
     set<Node*> foundCheck;
-    Node* curr_node;
+    Node* currNode;
 
-	if (IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
+#ifdef ASSERT_MODE
+    ASSERT(src != dest);
+#endif
+    if (IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
+#ifdef ASSERT_MODE
+        ASSERT(IS_EXIST(FIND(dest->inEdges, src), dest->inEdges));
+#endif
         return;
     }
     src->outEdges.insert(dest);
     dest->inEdges.insert(src);
 
+
     nodeQueue.push(src);
     foundCheck.insert(src);
-
     while(!nodeQueue.empty()){
-        curr_node = nodeQueue.front();
+        currNode = nodeQueue.front();
         nodeQueue.pop();
 
-        if (!updateLSP(src, dest, curr_node, curr_ver)) continue;
+        if (!updateLSP(src, dest, currNode, curr_ver)) continue;
 
-        for (set<Node*>::iterator it = curr_node->inEdges.begin(); it != curr_node->inEdges.end(); it++){
-            if (foundCheck.find(*it) == foundCheck.end()){
+        for (set<Node*>::iterator it = currNode->inEdges.begin(); it != currNode->inEdges.end(); it++){
+            if (!IS_EXIST(FIND(foundCheck,*it), foundCheck)){
                 nodeQueue.push(*it);
                 foundCheck.insert(*it);
             }

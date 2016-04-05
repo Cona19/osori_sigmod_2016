@@ -66,8 +66,8 @@ map<Node*, dist_t> getBGroupSet(Node* bStart, Node* aNode, dist_t toDelEdge){
             for (set<Node*>::iterator it = currNode->outEdges.begin(); it != currNode->outEdges.end(); it++){
                 //push if it is unbelievable
 #ifdef ASSERT_MODE
-                ASSERT(IS_EXIST(FIND(bStart->lsp, *it), bStart->lsp));
-                ASSERT(IS_EXIST(FIND(aNode->lsp, *it), aNode->lsp));
+                ASSERT(bStart == *it || (IS_EXIST(FIND(bStart->lsp, *it), bStart->lsp) && !IS_UNREACHABLE(GET_LSP_DIST(bStart, *it))));
+                ASSERT(aNode == *it || (IS_EXIST(FIND(aNode->lsp, *it), aNode->lsp) && !IS_UNREACHABLE(GET_LSP_DIST(aNode, *it))));
 #endif
                 if (!IS_EXIST(FIND(foundCheck, *it),foundCheck) && 
                     toDelEdge + (bStart == *it ? 0 : GET_LSP_DIST(bStart, *it)) == (aNode == *it ? 0 : GET_LSP_DIST(aNode, *it))){
@@ -83,7 +83,7 @@ map<Node*, dist_t> getBGroupSet(Node* bStart, Node* aNode, dist_t toDelEdge){
 static inline void verCheckAndUpdateLSP(Node *src, Node *dest, dist_t dist, vid_t ver){
 #ifdef ASSERT_MODE
     ASSERT(src != dest);
-    ASSERT(IS_EXIST(FIND(src->lsp, dest),src->lsp));
+    ASSERT(IS_EXIST(FIND(src->lsp, dest),src->lsp) && !IS_UNREACHABLE(GET_LSP_DIST(src, dest)));
 #endif
     map<Node*, LSPNode*>::iterator lspIt = LSP_FIND(src, dest);
 
@@ -178,16 +178,20 @@ A그룹이면 탐색
 }
 
 void deleteEdge(Node* src, Node* dest, vid_t currVer){
-    set<Node*> aGroup = getAGroupSet(src);
+    set<Node*> aGroup;
     map<Node*, dist_t> bGroup;
     set<Node*>::iterator tmp;
 
     if (!IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
+#ifdef ASSERT_MODE
+        ASSERT(!IS_EXIST(FIND(dest->inEdges, src), dest->inEdges));
+#endif
         return;
     }
     src->outEdges.erase(dest);
     dest->inEdges.erase(src);
 
+    aGroup = getAGroupSet(src);
 /*
 A그룹이면 탐색
 아니면 값 이용하고 탐색x
