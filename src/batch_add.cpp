@@ -1,5 +1,6 @@
 #include "batch_add.h"
 #include "lsp_macro.h"
+#include "assert.h"
 #include <queue>
 
 static bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
@@ -40,7 +41,7 @@ static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
     Node* currNode;
     dist_t distAPart = (src == updatedNode ? 0 : GET_LSP_DIST(updatedNode, src));
 #ifdef ASSERT_MODE
-    ASSERT(src == updatedNode || LSP_IS_EXIST(LSP_FIND(updatedNode, src), updateNode));
+    ASSERT(src == updatedNode || LSP_IS_EXIST(LSP_FIND(updatedNode, src), updatedNode));
 #endif
 
     {
