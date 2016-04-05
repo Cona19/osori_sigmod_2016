@@ -4,9 +4,9 @@
 #include <stdlib.h>
 
 #define ASSERT(C) do{ \
-    if (C){ \
-        printf(#C" Error"); \
-        exit(0);
+    if (!(C)){ \
+        printf(#C" Error\n"); \
+        exit(0); \
     } \
-while(false)
+}while(false)
 #endif
