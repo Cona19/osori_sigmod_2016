@@ -182,6 +182,11 @@ void deleteEdge(Node* src, Node* dest, vid_t currVer){
     map<Node*, dist_t> bGroup;
     set<Node*>::iterator tmp;
 
+#ifdef ASSERT_MODE
+    ASSERT(src != dest);
+    ASSERT(src->cluster == dest->cluster);
+#endif
+
     if (!IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
 #ifdef ASSERT_MODE
         ASSERT(!IS_EXIST(FIND(dest->inEdges, src), dest->inEdges));

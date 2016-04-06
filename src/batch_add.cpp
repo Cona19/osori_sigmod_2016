@@ -93,6 +93,7 @@ void addEdge(Node* src, Node* dest, vid_t curr_ver){
 
 #ifdef ASSERT_MODE
     ASSERT(src != dest);
+    ASSERT(src->cluster == dest->cluster);
 #endif
     if (IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
 #ifdef ASSERT_MODE
