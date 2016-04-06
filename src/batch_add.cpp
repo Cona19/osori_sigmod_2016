@@ -1,6 +1,6 @@
 #include "batch_add.h"
 #include "lsp_macro.h"
-#include "assert.h"
+#include "my_assert.h"
 #include <queue>
 #include <stdio.h>
 
