@@ -346,7 +346,20 @@ void clustering()
 	delete pthread;
 */
 	calcLSP(0);
-
+/*
+	for( boost::unordered_map<nid_t, Node>::iterator it = nodes.begin();
+													 it != nodes.end();
+													 it++ )
+	{
+		printf("--%d--\n", it->first);
+		for( map<Node*, LSPNode*>::iterator it2 = it->second.lsp.begin();
+											it2 != it->second.lsp.end();
+											it2++ )
+		{
+			printf("%d %d\n", it2->first->nid, it2->second->dist);
+		}
+	}
+*/
 	gettimeofday( &endTime, NULL );
 	printf("<preprocess time : %d>\n", endTime.tv_sec - startTime.tv_sec);
 
@@ -582,6 +595,17 @@ void* calcLSP(void* tid)
 				newLSPNode->dist = currentNode.second + 1;
 				newLSPNode->ver = 1;
 				newLSPNode->next = NULL;
+
+				pair< map<Node*, LSPNode*>::iterator, bool > ret =
+								it->second.lsp.insert(
+									pair<Node*, LSPNode*>(
+									   	(*it2), newLSPNode ) );
+				if( !ret.second )
+				{
+					newLSPNode->next = ret.first->second;
+					ret.first->second = newLSPNode;
+				}
+
 				cntLSPNode++;
 
 				// 이웃을 Queue에 추가
