@@ -3,11 +3,11 @@ CC = g++
 CPPFLAGS = -O2 -Wunused-result
 CPPFLAGS_DEBUG = -Wall -g
 
-OBJS = ./src/main.o ./src/clustering.o
+OBJS = ./src/main.o ./src/clustering.o ./src/batch_add.o ./src/batch_delete.o
 SRCS = ./src/$(OBJS:.o=.cpp)
 BIN = ./bin/
 INCLUDE = ./src
-LIBNAME = -lpthread
+LIBNAME = -lpthread -lboost_system
 
 CPPFLAGS += -I$(INCLUDE)
 

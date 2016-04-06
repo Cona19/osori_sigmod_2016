@@ -5,10 +5,12 @@
 #include <iostream>
 #include "common.h"
 #include "clustering.h"
+#include "batch_add.h"
+#include "batch_delete.h"
 
 #define TEST_WITH_FILE
 
-map<nid_t, Node> nodes;
+boost::unordered_map<nid_t, Node> nodes;
 map<cid_t, Cluster> clusters;
 vector<Edge> edges;
 
@@ -20,6 +22,9 @@ typedef struct _Command
 	char type;
 	nid_t startNodeID;
 	nid_t endNodeID;
+
+	Node* startNode;
+	Node* endNode;
 
 	vid_t ver;
 
@@ -96,7 +101,7 @@ int main()
 		edges.push_back( newEdge );
 
 		// edge의 시작 노드 찾기
-		map<nid_t, Node>::iterator it = nodes.find( node1 );
+		boost::unordered_map<nid_t, Node>::iterator it = nodes.find( node1 );
 		if( it == nodes.end() )
 		{
 			// 새로운 노드가 추가된 경우
@@ -104,9 +109,8 @@ int main()
 			newNode.clusterID = -1; 
 			newNode.nid = node1;
 			newNode.inOutEdges.insert( node2 );
-			pair< map<nid_t, Node>::iterator, bool > ret =
-				nodes.insert( map<nid_t, Node>::
-						value_type( node1, newNode ) );
+			pair< boost::unordered_map<nid_t, Node>::iterator, bool > ret =
+				nodes.insert( map<nid_t, Node>::value_type( node1, newNode ) );
 			it = ret.first;
 		}   
 		else
@@ -114,7 +118,7 @@ int main()
 			it->second.inOutEdges.insert( node2 );
 		}
 		// edge의 도착 노드 찾기
-		map<nid_t, Node>::iterator it2 = nodes.find( node2 );
+		boost::unordered_map<nid_t, Node>::iterator it2 = nodes.find( node2 );
 		if( it2 == nodes.end() )
 		{
 			// 새로운 노드가 추가된 경우
@@ -122,7 +126,7 @@ int main()
 			newNode.clusterID = -1;
 			newNode.nid = node2;
 			newNode.inOutEdges.insert( node1 );
-			pair< map<nid_t, Node>::iterator, bool > ret =
+			pair< boost::unordered_map<nid_t, Node>::iterator, bool > ret =
 				nodes.insert( map<nid_t, Node>::
 						value_type( node2, newNode ) );
 			it2 = ret.first;
@@ -221,9 +225,9 @@ int main()
 			{
 				if( it->type == 'A' )
 				{
-					map<nid_t, Node>::iterator nit1 =
+					boost::unordered_map<nid_t, Node>::iterator nit1 =
 					   	nodes.find( it->startNodeID );
-					map<nid_t, Node>::iterator nit2 =
+					boost::unordered_map<nid_t, Node>::iterator nit2 =
 						nodes.find( it->endNodeID );
 	
 					if( nit1 == nodes.end() )
@@ -245,13 +249,17 @@ int main()
 							newNode2.nid = it->endNodeID;
 							newNode2.cluster = newNode1.cluster;
 	
-							nodes.insert( pair<nid_t, Node>(
-									it->startNodeID, newNode1 ) );
-	
+							pair< boost::unordered_map<nid_t, Node>::iterator, bool > it_n1 =
+								nodes.insert( pair<nid_t, Node>(
+										it->startNodeID, newNode1 ) );
+
+							pair< boost::unordered_map<nid_t, Node>::iterator, bool > it_n2 =
 							nodes.insert( pair<nid_t, Node>(
 									it->endNodeID, newNode2 ) );
 	
 							it->clusterID = r;
+							it->startNode = &(it_n1.first->second);
+							it->endNode = &(it_n2.first->second);
 						}
 						else
 						{
@@ -261,10 +269,13 @@ int main()
 							newNode.nid = it->startNodeID;
 							newNode.cluster = nit2->second.cluster;
 		
-							nodes.insert( map<nid_t, Node>::value_type(
-									it->startNodeID, newNode ) );
+							pair< boost::unordered_map<nid_t, Node>::iterator, bool > it_n1 =
+								nodes.insert( boost::unordered_map<nid_t, Node>::value_type(
+										it->startNodeID, newNode ) );
 
 							it->clusterID = newNode.clusterID;
+							it->startNode = &(it_n1.first->second);
+							it->endNode = &(nit2->second);
 						}
 						it++;
 					}
@@ -276,10 +287,14 @@ int main()
 						newNode.nid = it->endNodeID;
 						newNode.cluster = nit1->second.cluster;
 
-						nodes.insert( map<nid_t, Node>::value_type(
-								it->endNodeID, newNode ) );
+						pair< boost::unordered_map<nid_t, Node>::iterator, bool > it_n2 =
+							nodes.insert( map<nid_t, Node>::value_type(
+									it->endNodeID, newNode ) );
 
 						it->clusterID = newNode.clusterID;
+						it->startNode = &(nit1->second);
+						it->endNode = &(it_n2.first->second);
+	
 						it++;
 					}
 					else
@@ -290,6 +305,8 @@ int main()
 							nit2->second.clusterID )
 						{
 							it->clusterID = nit1->second.clusterID;
+							it->startNode = &(nit1->second);
+							it->endNode = &(nit2->second);	
 							it++;
 							continue;
 						}
@@ -299,19 +316,20 @@ int main()
 						// 이미 있는 bridge라면 ValidNode만 달아주고,
 						// 없는 bridge라면 새로 추가
 						bool bExist = false;
-						for( list<Bridge>::iterator it_b =
-							 nit1->second.cluster->outBridges.begin();
-							 it_b != nit1->second.cluster->outBridges.end();
-							 it_b++ )
+
+						pair<multimap<Node*, Bridge>::iterator,
+							 multimap<Node*, Bridge>::iterator> range;
+						range = nit1->second.cluster->outBridges.equal_range( &(nit1->second) );
+						
+						for( multimap<Node*, Bridge>::iterator it_b =
+								range.first; it_b != range.second; it_b++ )
 						{
-							if( it_b->src == &(nit1->second) &&
-								it_b->dest == &(nit2->second) )
+							if( it_b->second.dest == &(nit2->second) )
 							{
-								// 이미 out bridge 존재
 								ValidNode newValidNode;
 								newValidNode.ver = it->ver;
 								newValidNode.isValid = true;
-								it_b->validList.push_front( newValidNode );
+								it_b->second.validList.push_front( newValidNode );
 								bExist = true;
 								break;
 							}
@@ -327,26 +345,30 @@ int main()
 							newValidNode.isValid = true;
 							newBridge.validList.push_front( newValidNode );
 
-							nit1->second.cluster->outBridges.push_front(
-									newBridge );
-							nit2->second.cluster->inBridges.push_front(
-									newBridge);
+//							nit1->second.cluster->outBridges.push_front(
+//									newBridge );
+//							nit2->second.cluster->inBridges.push_front(
+//									newBridge);
+							nit1->second.cluster->outBridges.insert( 
+									pair<Node*, Bridge>(
+									   	newBridge.src, newBridge) );
+							nit2->second.cluster->inBridges.insert(
+								    pair<Node*, Bridge>(
+								   	    newBridge.dest, newBridge ) );
 							it = updateCmdList.erase( it );
 							continue;
 						}
 						// out bridge가 존재하면 반대쪽 cluster의 in bridge도 무조건 존재
-						for( list<Bridge>::iterator it_b =
-							 nit2->second.cluster->inBridges.begin();
-							 it_b != nit2->second.cluster->inBridges.end();
-							 it_b++ )
+						range = nit2->second.cluster->inBridges.equal_range( &(nit2->second) );
+						for( multimap<Node*, Bridge>::iterator it_b =
+								range.first; it_b != range.second; it_b++ )
 						{
-							if( it_b->src == &(nit1->second) &&
-								it_b->dest == &(nit2->second) )
+							if( it_b->second.src == &(nit1->second) )
 							{
 								ValidNode newValidNode;
 								newValidNode.ver = it->ver;
 								newValidNode.isValid = true;
-								it_b->validList.push_front( newValidNode );
+								it_b->second.validList.push_front( newValidNode );
 								break;
 							}
 						}
@@ -356,7 +378,7 @@ int main()
 				}
 				else // D
 				{
-					map<nid_t, Node>::iterator nit1 =
+					boost::unordered_map<nid_t, Node>::iterator nit1 =
 						nodes.find( it->startNodeID );
 					if( nit1 == nodes.end() )
 					{
@@ -365,7 +387,7 @@ int main()
 					}
 					else
 					{
-						map<nid_t, Node>::iterator nit2 =
+						boost::unordered_map<nid_t, Node>::iterator nit2 =
 							nodes.find( it->endNodeID );
 						if( nit2 == nodes.end() )
 						{
@@ -379,6 +401,9 @@ int main()
 								nit2->second.clusterID )
 						{
 							it->clusterID = nit1->second.clusterID;
+							it->startNode = &(nit1->second);
+							it->endNode = &(nit2->second);
+	
 							it++;
 							continue;
 						}
@@ -390,45 +415,45 @@ int main()
 						// 이미 있는 bridge라면 ValidNode만 달아주고,
 						// 없는 bridge라면 무시(이경우는 없음)
 						bool bExist = false;
-						for( list<Bridge>::iterator it_b =
-							 nit1->second.cluster->outBridges.begin();
-							 it_b != nit1->second.cluster->outBridges.end();
-							 it_b++ )
+						pair<multimap<Node*, Bridge>::iterator,
+							 multimap<Node*, Bridge>::iterator> range;
+						range = nit1->second.cluster->outBridges.equal_range( &(nit1->second) );
+						for( multimap<Node*, Bridge>::iterator it_b =
+								range.first; it_b != range.second; it_b++ )
 						{
-							if( it_b->src == &(nit1->second) &&
-								it_b->dest == &(nit2->second) )
+							if( it_b->second.dest == &(nit2->second) )
 							{
-								// 이미 out bridge 존재
 								ValidNode newValidNode;
 								newValidNode.ver = it->ver;
 								newValidNode.isValid = false;
-								it_b->validList.push_front( newValidNode );
+								it_b->second.validList.push_front( newValidNode );
 								bExist = true;
 								break;
 							}
 						}
+
 						if( !bExist )
 						{
 							it = updateCmdList.erase( it );
 							continue;
 						}
 						// out bridge가 존재하면 반대쪽 cluster의 in bridge도 무조건 존재
-						for( list<Bridge>::iterator it_b =
-							 nit2->second.cluster->inBridges.begin();
-							 it_b != nit2->second.cluster->inBridges.end();
-							 it_b++ )
+
+	
+						range = nit2->second.cluster->inBridges.equal_range( &(nit2->second) );
+						for( multimap<Node*, Bridge>::iterator it_b =
+								range.first; it_b != range.second; it_b++ )
 						{
-							if( it_b->src == &(nit1->second) &&
-								it_b->dest == &(nit2->second) )
+							if( it_b->second.src == &(nit1->second) )
 							{
 								ValidNode newValidNode;
 								newValidNode.ver = it->ver;
 								newValidNode.isValid = false;
-								it_b->validList.push_front( newValidNode );
+								it_b->second.validList.push_front( newValidNode );
 								break;
 							}
 						}
-							
+
 						it = updateCmdList.erase( it );
 					}
 				}
@@ -512,12 +537,13 @@ void updatePhase()
 
 	while( cntSleepThread < numberOfCores-1 )
 		sched_yield();
+
 }
 
 void queryPhase()
 {
 	phase = PhaseQuery;
-
+return;
 	cntSleepThread = 0;
 
 	pthread_mutex_lock( &mutexWork );
@@ -577,19 +603,22 @@ void* executeCommand(void* tid)
 						if( it2->type == 'A' )
 						{
 							// TODO: 갓현석님의 ADD 시전
-							Node* start = &(nodes[it2->startNodeID]);
-							Node* end = &(nodes[it2->endNodeID]);
+							Node* start = it2->startNode;
+							Node* end = it2->endNode;
 							int ver = it2->ver;
 
+							// node의 lsp에는 연결되지 않은 node는 entry가 없다
+							//addEdge( start, end, ver );
 //							printf("A %d %d, ver:%d tid:%d\n", it2->startNodeID, it2->endNodeID, ver, threadID);
 						}
 						else
 						{
 							// TODO: 갓현석님의 DELETE 시전
-							Node* start = &(nodes[it2->startNodeID]);
-							Node* end = &(nodes[it2->endNodeID]);
+							Node* start = it2->startNode;
+							Node* end = it2->endNode;
 							int ver = it2->ver;
 
+							//deleteEdge( start, end, ver );
 //							printf("D %d %d, ver:%d tid:%d\n", it2->startNodeID, it2->endNodeID, ver, threadID);
 						}
 					}
@@ -607,7 +636,7 @@ void* executeCommand(void* tid)
 				{
 					// TODO: 갓희원님의 길찾기 시전
 					// 없는 node는 패스
-					map<nid_t, Node>::iterator itNode1 =
+					boost::unordered_map<nid_t, Node>::iterator itNode1 =
 					   	nodes.find( it->startNodeID );
 					if( itNode1 == nodes.end() )
 					{
@@ -615,7 +644,7 @@ void* executeCommand(void* tid)
 						continue;
 					}
 
-					map<nid_t, Node>::iterator itNode2 =
+					boost::unordered_map<nid_t, Node>::iterator itNode2 =
 						nodes.find( it->endNodeID );
 					if( itNode2 == nodes.end() )
 					{
@@ -638,7 +667,7 @@ void* executeCommand(void* tid)
 
 void printCluster()
 {
-	for( map<nid_t, Node>::iterator it = nodes.begin(); it != nodes.end();
+/*	for( boost::unordered_map<nid_t, Node>::iterator it = nodes.begin(); it != nodes.end();
 									it++ )
 	{
 		printf("node %d : cluster %d\n", it->second.nid, it->second.clusterID );
@@ -674,6 +703,6 @@ void printCluster()
 			}
 			printf("\n");
 		}
-	}
+	}*/
 }
 

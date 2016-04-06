@@ -4,6 +4,7 @@
 #include <set>
 #include <list>
 #include <map>
+#include <boost/unordered_map.hpp>
 
 using namespace std;
 
@@ -34,8 +35,10 @@ typedef struct _Bridge
 
 typedef struct _Cluster
 {
-	list<Bridge> inBridges;
-	list<Bridge> outBridges;
+//	list<Bridge> inBridges;
+//	list<Bridge> outBridges;
+	multimap<struct _Node*, Bridge> inBridges;	// key : dest node
+	multimap<struct _Node*, Bridge> outBridges;	// key : src node
 	bool isUpdating;
 	unsigned int size;
 } Cluster;

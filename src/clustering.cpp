@@ -13,7 +13,7 @@
 
 #define SWAP(a, b) (a ^= b ^= a ^= b)
 
-extern map<nid_t, Node> nodes;
+extern boost::unordered_map<nid_t, Node> nodes;
 extern map<cid_t, Cluster> clusters;
 extern vector<Edge> edges;
 extern int numberOfCores;
@@ -175,7 +175,7 @@ void clustering()
 
 	// clustering 되지 않은 1개짜리 node가 생긴다.
 	// 이것들을 각각의 cluster로 추가
-	for( map<nid_t, Node>::iterator it = nodes.begin();
+	for( boost::unordered_map<nid_t, Node>::iterator it = nodes.begin();
 									it != nodes.end(); it++ )
 	{
 		// 크기가 1인 cluster 모두 추가
@@ -227,7 +227,7 @@ void clustering()
 
 	// cluster 번호 연속적인 숫자로 정리하기
 	set<cid_t> clusterNumbers;
-	for( map<nid_t, Node>::iterator it = nodes.begin();
+	for( boost::unordered_map<nid_t, Node>::iterator it = nodes.begin();
 									it != nodes.end(); it++ )
 	{
 		clusterNumbers.insert( it->second.clusterID );
@@ -252,7 +252,7 @@ void clustering()
 	}
 
 	// 각 node에 정리된 cluster 번호 부여, 각 cluster 크기 계산
-	for( map<nid_t, Node>::iterator it = nodes.begin();
+	for( boost::unordered_map<nid_t, Node>::iterator it = nodes.begin();
 									it != nodes.end(); it++ )
 	{
 		it->second.clusterID = clusterNumMap[it->second.clusterID];
@@ -263,7 +263,7 @@ void clustering()
 	int cntInBridge = 0;
 	int cntOutBridge = 0;
 	// Node의 inEdges, outEdges들을 순회하며 Bridge인지 판단, Bridge인 경우 양쪽 Cluster에 Bridge 정보를 저장하고 Node의 edge 정보에서는 제거한다. Node가 가지는 edge정보는 동일한 cluster 내의 edge만을 갖는다.
-	for( map<nid_t, Node>::iterator it = nodes.begin();
+	for( boost::unordered_map<nid_t, Node>::iterator it = nodes.begin();
 									it != nodes.end(); it++)
 	{
 		set<Node*>::iterator it2 = it->second.inEdges.begin();
@@ -279,7 +279,9 @@ void clustering()
 				validNode.isValid = true;
 				newBridge.validList.push_back( validNode );
 
-				it->second.cluster->inBridges.push_back( newBridge );
+//				it->second.cluster->inBridges.push_back( newBridge );
+				it->second.cluster->inBridges.insert(
+						pair<Node*, Bridge>( newBridge.dest, newBridge ) );
 
 				it->second.inEdges.erase( it2++ );
 				cntInBridge++;
@@ -301,7 +303,9 @@ void clustering()
 				validNode.isValid = true;
 				newBridge.validList.push_back( validNode );
 
-				it->second.cluster->outBridges.push_back( newBridge );
+//				it->second.cluster->outBridges.push_back( newBridge );
+				it->second.cluster->outBridges.insert(
+					   pair<Node*, Bridge>( newBridge.src, newBridge ) );
 
 				it->second.outEdges.erase( it2++ );
 				cntOutBridge++;
@@ -368,7 +372,7 @@ vector<int> preClustering(int maxClusterSize)
 	vector< vector<nid_t> > subgraphs;
 
 	// 모든 subgraph 찾기
-	for( map<nid_t, Node>::iterator it = nodes.begin();
+	for( boost::unordered_map<nid_t, Node>::iterator it = nodes.begin();
 									it != nodes.end(); it++ )
 	{
 		// subgraph로 찾은 node는 clusterID를 0으로 바꿔놓는다.
@@ -535,7 +539,7 @@ void* calcLSP(void* tid)
 
 	int i = 0;
 	int cntLSPNode = 0;
-	for( map<nid_t, Node>::iterator it = nodes.begin();
+	for( boost::unordered_map<nid_t, Node>::iterator it = nodes.begin();
 									it != nodes.end(); it++ )
 	{
 //		if( ( i + numberOfCores - threadID ) % numberOfCores != 0 )

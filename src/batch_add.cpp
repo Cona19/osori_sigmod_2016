@@ -2,6 +2,7 @@
 #include "lsp_macro.h"
 #include "assert.h"
 #include <queue>
+#include <stdio.h>
 
 static bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
     map<Node*, LSPNode*>::iterator lspIt = LSP_FIND(src, dest);
