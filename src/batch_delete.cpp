@@ -2,6 +2,8 @@
 #include "lsp_macro.h"
 #include "my_assert.h"
 #include <boost/lockfree/queue.hpp>
+#include <boost/unordered_set.hpp>
+#include <boost/unordered_map.hpp>
 
 
 
@@ -10,6 +12,9 @@ typedef struct _BfsNode{
     dist_t dist;
 } BfsNode;
 
+
+typedef boost::unordered_set<Node*> NodeSet;
+typedef boost::unordered_map<Node*, dist_t> NodeMap;
 typedef boost::lockfree::queue<Node*> NodeQueue;
 typedef boost::lockfree::queue<BfsNode> BfsNodeQueue;
 
@@ -22,9 +27,9 @@ typedef boost::lockfree::queue<BfsNode> BfsNodeQueue;
     4) 도착한 애가 A그룹에 속하지 않고 B그룹에 속하면 더이상 탐색하지 않고 lsp값을 사용한다.
 */
 
-set<Node*> getAGroupSet(Node* src){
+NodeSet getAGroupSet(Node* src){
     NodeQueue nodeQueue(0);
-    set<Node*> foundCheck;
+    NodeSet foundCheck;
     Node* currNode;
 
     nodeQueue.push(src);
@@ -46,12 +51,12 @@ set<Node*> getAGroupSet(Node* src){
 /*
 Not all B Group memebers, just those which is not believable.
 */
-map<Node*, dist_t> getBGroupSet(Node* bStart, Node* aNode, dist_t toDelEdge){
+NodeMap getBGroupSet(Node* bStart, Node* aNode, dist_t toDelEdge){
 #ifdef ASSERT_MODE
     ASSERT(bStart != aNode);
 #endif
     NodeQueue nodeQueue(0);
-    map<Node*, dist_t> foundCheck;
+    NodeMap foundCheck;
     Node* currNode;
 
     //prev toDelEdge refers to distance from aNode to source node which has the deleted edge.
@@ -101,16 +106,16 @@ static inline void verCheckAndUpdateLSP(Node *src, Node *dest, dist_t dist, vid_
     }
 }
 
-static void updateLSP(Node* src, set<Node*> &aGroup, map<Node*, dist_t> &bGroup, vid_t currVer){
+static void updateLSP(Node* src, NodeSet &aGroup, NodeMap &bGroup, vid_t currVer){
 #ifdef ASSERT_MODE
     ASSERT(!bGroup.empty());
 #endif
     BfsNodeQueue nodeQueue(0);
-    set<Node*> foundCheck;
+    NodeSet foundCheck;
     BfsNode currBfsNode = {src, 0};
     Node* currNode;
     map<Node*, LSPNode*>::iterator lspIt;
-    map<Node*, dist_t>::iterator bgrIt;
+    NodeMap::iterator bgrIt;
 
     nodeQueue.push(currBfsNode);
     foundCheck.insert(src);
@@ -163,7 +168,7 @@ A그룹이면 탐색
             }
         }
         else{
-            for (map<Node*, dist_t>::iterator it = bGroup.begin(); it != bGroup.end(); it++){
+            for (NodeMap::iterator it = bGroup.begin(); it != bGroup.end(); it++){
                 lspIt = LSP_FIND(currNode, it->first);
                 if (LSP_IS_EXIST(lspIt, currNode) && !IS_UNREACHABLE_LSP(lspIt)){
                     dist_t newDist = currBfsNode.dist + GET_LATEST_LSP(lspIt->second)->dist;
@@ -174,15 +179,15 @@ A그룹이면 탐색
             }
         }
     }
-    for (map<Node*, dist_t>::iterator it = bGroup.begin(); it != bGroup.end(); it++){
+    for (NodeMap::iterator it = bGroup.begin(); it != bGroup.end(); it++){
         verCheckAndUpdateLSP(src, it->first, it->second, currVer);
     }
 }
 
 void deleteEdge(Node* src, Node* dest, vid_t currVer){
-    set<Node*> aGroup;
-    map<Node*, dist_t> bGroup;
-    set<Node*>::iterator tmp;
+    NodeSet aGroup;
+    NodeMap bGroup;
+    NodeSet::iterator tmp;
 
 #ifdef ASSERT_MODE
     ASSERT(src != dest);
@@ -204,7 +209,7 @@ void deleteEdge(Node* src, Node* dest, vid_t currVer){
 A그룹이면 탐색
 아니면 값 이용하고 탐색x
 */
-    for (set<Node*>::iterator it = aGroup.begin(); it != aGroup.end();){
+    for (NodeSet::iterator it = aGroup.begin(); it != aGroup.end();){
         if (dest != *it){
             bGroup = getBGroupSet(dest, *it, (*it == src) ? 0 : GET_LATEST_LSP((*it)->lsp[src])->dist);
             if (!bGroup.empty()){
