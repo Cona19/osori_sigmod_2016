@@ -44,7 +44,7 @@ static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
     ASSERT(src == updatedNode || LSP_IS_EXIST(LSP_FIND(updatedNode, src), updatedNode));
 #endif
 
-    NodeQueue nodeQueue;
+    NodeQueue nodeQueue(0);
     NodeSet foundCheck;
     Node* currNode;
     dist_t distAPart = (src == updatedNode ? 0 : GET_LSP_DIST(updatedNode, src));
@@ -91,7 +91,7 @@ static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
 
 */
 void addEdge(Node* src, Node* dest, vid_t curr_ver){
-    NodeQueue nodeQueue;
+    NodeQueue nodeQueue(0);
     NodeSet foundCheck;
     Node* currNode;
 

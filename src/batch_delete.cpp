@@ -23,7 +23,7 @@ typedef boost::lockfree::queue<BfsNode> BfsNodeQueue;
 */
 
 set<Node*> getAGroupSet(Node* src){
-    NodeQueue nodeQueue;
+    NodeQueue nodeQueue(0);
     set<Node*> foundCheck;
     Node* currNode;
 
@@ -50,7 +50,7 @@ map<Node*, dist_t> getBGroupSet(Node* bStart, Node* aNode, dist_t toDelEdge){
 #ifdef ASSERT_MODE
     ASSERT(bStart != aNode);
 #endif
-    NodeQueue nodeQueue;
+    NodeQueue nodeQueue(0);
     map<Node*, dist_t> foundCheck;
     Node* currNode;
 
@@ -105,7 +105,7 @@ static void updateLSP(Node* src, set<Node*> &aGroup, map<Node*, dist_t> &bGroup,
 #ifdef ASSERT_MODE
     ASSERT(!bGroup.empty());
 #endif
-    BfsNodeQueue nodeQueue;
+    BfsNodeQueue nodeQueue(0);
     set<Node*> foundCheck;
     BfsNode currBfsNode = {src, 0};
     Node* currNode;
