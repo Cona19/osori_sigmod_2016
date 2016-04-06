@@ -185,6 +185,7 @@ void deleteEdge(Node* src, Node* dest, vid_t currVer){
 #ifdef ASSERT_MODE
     ASSERT(src != dest);
     ASSERT(src->cluster == dest->cluster);
+    ASSERT(src->cluster->isUpdating);
 #endif
 
     if (!IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
@@ -212,4 +213,5 @@ A그룹이면 탐색
         it++;
         aGroup.erase(*tmp);
     }
+    src->cluster->isUpdating = false;
 }

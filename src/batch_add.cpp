@@ -1,6 +1,6 @@
 #include "batch_add.h"
 #include "lsp_macro.h"
-#include "assert.h"
+#include "my_assert.h"
 #include <queue>
 #include <stdio.h>
 
@@ -36,13 +36,14 @@ static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
     if (dest == updatedNode){
         return false;
     }
+#ifdef ASSERT_MODE
+    ASSERT(src == updatedNode || LSP_IS_EXIST(LSP_FIND(updatedNode, src), updatedNode));
+#endif
+
     queue<Node*> nodeQueue;
     set<Node*> foundCheck;
     Node* currNode;
     dist_t distAPart = (src == updatedNode ? 0 : GET_LSP_DIST(updatedNode, src));
-#ifdef ASSERT_MODE
-    ASSERT(src == updatedNode || LSP_IS_EXIST(LSP_FIND(updatedNode, src), updatedNode));
-#endif
 
     {
         map<Node* , LSPNode*>::iterator lspIt = LSP_FIND(updatedNode, dest);
@@ -94,6 +95,7 @@ void addEdge(Node* src, Node* dest, vid_t curr_ver){
 #ifdef ASSERT_MODE
     ASSERT(src != dest);
     ASSERT(src->cluster == dest->cluster);
+    ASSERT(src->cluster->isUpdating);
 #endif
     if (IS_EXIST(FIND(src->outEdges, dest), src->outEdges)){
 #ifdef ASSERT_MODE
@@ -120,4 +122,5 @@ void addEdge(Node* src, Node* dest, vid_t curr_ver){
             }
         }
     }
+    src->cluster->isUpdating = false;
 }
