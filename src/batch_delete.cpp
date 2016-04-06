@@ -1,12 +1,17 @@
 #include "batch_delete.h"
 #include "lsp_macro.h"
 #include "my_assert.h"
-#include <queue>
+#include <boost/lockfree/queue.hpp>
 
-typedef struct _bfsNode{
+
+
+typedef struct _BfsNode{
     Node* node;
     dist_t dist;
-} bfsNode;
+} BfsNode;
+
+typedef boost::lockfree::queue<Node*> NodeQueue;
+typedef boost::lockfree::queue<BfsNode> BfsNodeQueue;
 
 /*
 1. A그룹인 애들을 BFS로 찾고, B그룹인 애들을 lsp로 찾는다.
@@ -18,7 +23,7 @@ typedef struct _bfsNode{
 */
 
 set<Node*> getAGroupSet(Node* src){
-    queue<Node*> nodeQueue;
+    NodeQueue nodeQueue;
     set<Node*> foundCheck;
     Node* currNode;
 
@@ -26,8 +31,7 @@ set<Node*> getAGroupSet(Node* src){
     foundCheck.insert(src);
 
     while(!nodeQueue.empty()){
-        currNode = nodeQueue.front();
-        nodeQueue.pop();
+        nodeQueue.pop(currNode);
 
         for (set<Node*>::iterator it = currNode->inEdges.begin(); it != currNode->inEdges.end(); it++){
             if (!IS_EXIST(FIND(foundCheck, *it), foundCheck)){
@@ -46,7 +50,7 @@ map<Node*, dist_t> getBGroupSet(Node* bStart, Node* aNode, dist_t toDelEdge){
 #ifdef ASSERT_MODE
     ASSERT(bStart != aNode);
 #endif
-    queue<Node*> nodeQueue;
+    NodeQueue nodeQueue;
     map<Node*, dist_t> foundCheck;
     Node* currNode;
 
@@ -60,8 +64,7 @@ map<Node*, dist_t> getBGroupSet(Node* bStart, Node* aNode, dist_t toDelEdge){
         foundCheck[bStart] = LSP_UNREACHABLE;
 
         while(!nodeQueue.empty()){
-            currNode = nodeQueue.front();
-            nodeQueue.pop();
+            nodeQueue.pop(currNode);
 
             for (set<Node*>::iterator it = currNode->outEdges.begin(); it != currNode->outEdges.end(); it++){
                 //push if it is unbelievable
@@ -102,9 +105,9 @@ static void updateLSP(Node* src, set<Node*> &aGroup, map<Node*, dist_t> &bGroup,
 #ifdef ASSERT_MODE
     ASSERT(!bGroup.empty());
 #endif
-    queue<bfsNode> nodeQueue;
+    BfsNodeQueue nodeQueue;
     set<Node*> foundCheck;
-    bfsNode currBfsNode = {src, 0};
+    BfsNode currBfsNode = {src, 0};
     Node* currNode;
     map<Node*, LSPNode*>::iterator lspIt;
     map<Node*, dist_t>::iterator bgrIt;
@@ -117,8 +120,7 @@ A그룹이면 탐색
 아니면 값 이용하고 탐색x
 */
     while(!nodeQueue.empty()){
-        currBfsNode = nodeQueue.front();
-        nodeQueue.pop();
+        nodeQueue.pop(currBfsNode);
 
         currNode = currBfsNode.node;
 

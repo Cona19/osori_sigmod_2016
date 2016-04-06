@@ -5,7 +5,7 @@
 static FILE *fp = stdout;
 
 void lspTest(){
-    for (map<nid_t, Node>::iterator it = nodes.begin(); it != nodes.end(); it++){
+    for (boost::unordered_map<nid_t, Node>::iterator it = nodes.begin(); it != nodes.end(); it++){
         fprintf(fp, "%u Node\n", it->first);
         Node *curr_node = &(it->second);
         fprintf(fp, "inEdges : ");

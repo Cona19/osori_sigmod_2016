@@ -1,8 +1,12 @@
 #include "batch_add.h"
 #include "lsp_macro.h"
 #include "my_assert.h"
-#include <queue>
+#include <boost/unordered_set.hpp>
+#include <boost/lockfree/queue.hpp>
 #include <stdio.h>
+
+typedef boost::unordered_set<Node*> NodeSet;
+typedef boost::lockfree::queue<Node*> NodeQueue;
 
 static bool compareAndUpdateLSP(Node* src, Node* dest, dist_t dist, vid_t ver){
     map<Node*, LSPNode*>::iterator lspIt = LSP_FIND(src, dest);
@@ -40,8 +44,8 @@ static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
     ASSERT(src == updatedNode || LSP_IS_EXIST(LSP_FIND(updatedNode, src), updatedNode));
 #endif
 
-    queue<Node*> nodeQueue;
-    set<Node*> foundCheck;
+    NodeQueue nodeQueue;
+    NodeSet foundCheck;
     Node* currNode;
     dist_t distAPart = (src == updatedNode ? 0 : GET_LSP_DIST(updatedNode, src));
 
@@ -59,8 +63,7 @@ static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
     foundCheck.insert(updatedNode);//updatedNode itself don't need to explore => cycle is always not used as shortest
 
     while(!nodeQueue.empty()){
-        currNode = nodeQueue.front();
-        nodeQueue.pop();
+        nodeQueue.pop(currNode);
 
 #ifdef ASSERT_MODE
         ASSERT(dest == currNode || LSP_IS_EXIST(LSP_FIND(dest, currNode), dest));
@@ -88,8 +91,8 @@ static bool updateLSP(Node* src, Node* dest, Node* updatedNode, vid_t curr_ver){
 
 */
 void addEdge(Node* src, Node* dest, vid_t curr_ver){
-    queue<Node*> nodeQueue;
-    set<Node*> foundCheck;
+    NodeQueue nodeQueue;
+    NodeSet foundCheck;
     Node* currNode;
 
 #ifdef ASSERT_MODE
@@ -110,8 +113,7 @@ void addEdge(Node* src, Node* dest, vid_t curr_ver){
     nodeQueue.push(src);
     foundCheck.insert(src);
     while(!nodeQueue.empty()){
-        currNode = nodeQueue.front();
-        nodeQueue.pop();
+        nodeQueue.pop(currNode);
 
         if (!updateLSP(src, dest, currNode, curr_ver)) continue;
 
